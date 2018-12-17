@@ -1,7 +1,7 @@
 #!/bin/bash
 
 srcDir=$(pwd)
-targetDir="../patch_nexell_nougat_r1/"
+targetDir="../nexell_nougat_r1/"
 
 echo ${srcDir}
 echo ${targetDir}
