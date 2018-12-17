@@ -1,0 +1,5 @@
+board.c:180:5:board_early_init_f	0	static
+board.c:185:5:board_init	16	static
+board.c:198:5:board_late_init	16	static
+board.c:261:5:dram_init	0	static
+board.c:268:6:dram_init_banksize	0	static

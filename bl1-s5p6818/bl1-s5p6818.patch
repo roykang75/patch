@@ -1,0 +1,236 @@
+diff --git a/config.mak b/config.mak
+index d563b5a..3d27398 100644
+--- a/config.mak
++++ b/config.mak
+@@ -52,7 +52,8 @@ SUPPORT_SDFS_BOOT		?= n
+ #BOARD				?= svt
+ #BOARD				?= asb
+ #BOARD				?= drone
+-BOARD				?= avn
++#BOARD				?= avn
++BOARD				?= rookie
+ #BOARD				?= bf700
+ #BOARD				?= raptor
+ #BOARD				?= kick_st
+@@ -63,15 +64,17 @@ DEVICE_PORT			?= 2
+ #DEVICE_PORT			?= 0
+ 
+ # supported kernel version (3.18-3.4/4.1-4.4)
+-KERNEL_VER			?= 3
+-#KERNEL_VER			?= 4
++#KERNEL_VER			?= 3
++KERNEL_VER			?= 4
+ 
+ # system log message
+-SYSLOG				?= n
++SYSLOG				?= y
+ 
+ # secure Boot
+ SECURE_ON			?= n
+ 
++#MEMTEST             = y
++
+ # cross-tool pre-header
+ ifeq ($(OPMODE), aarch32)
+ ifeq ($(OS),Windows_NT)
+@@ -192,6 +195,8 @@ endif
+ # supported kernel version (3.18-4.3/4.1-4.4)
+ ifeq ($(KERNEL_VER), 3)
+ CFLAGS				+=	-DKERNEL_VER_3_4
++else
++CFLAGS				+=	-DKERNEL_VER_4_4
+ endif
+ 
+ # system log messgae
+diff --git a/src/boot/iUSBBOOT.c b/src/boot/iUSBBOOT.c
+index 40cd676..f5de754 100644
+--- a/src/boot/iUSBBOOT.c
++++ b/src/boot/iUSBBOOT.c
+@@ -432,7 +432,7 @@ static void header_check(USBBOOTSTATUS *pUSBBootStatus, struct nx_bootheader *pt
+ 			tbi->dbi[0].usbbi.split_size +
+ 			tbi->dbi[1].usbbi.split_size;
+ 		pUSBBootStatus->iRxSize_save = pUSBBootStatus->iRxSize;
+-		SYSMSG("USB Load Address = 0x%016X Launch "
++		SYSMSG("[435] USB Load Address = 0x%016X Launch "
+ 		       "Address = 0x%016X, size = %08X bytes\r\n",
+ 		       (MPTRS)tbi->loadaddr,
+ 		       (MPTRS)tbi->startaddr,
+@@ -475,7 +475,7 @@ static void nx_usb_int_bulkout(USBBOOTSTATUS *pUSBBootStatus,
+ 				pUSBBootStatus->bHeaderReceived = CTRUE;
+ 				pUSBBootStatus->RxBuffAddr    = (unsigned char*)((MPTRS)pTBI->LOADADDR);
+ 				pUSBBootStatus->iRxSize = pTBI->LOADSIZE;
+-				printf("USB Load Address = 0x%016X Launch Address = 0x%08X, size = %d bytes\r\n",
++				printf("[479] USB Load Address = 0x%016X Launch Address = 0x%08X, size = %d bytes\r\n",
+ 				    (MPTRS)pUSBBootStatus->RxBuffAddr , pTBI->LAUNCHADDR, pUSBBootStatus->iRxSize );
+ 			} else {
+ 				pUSBBootStatus->iRxHeaderSize = 0;
+@@ -906,7 +906,7 @@ int iUSBBOOT(struct NX_SecondBootInfo *pTBI)
+ 
+ 	SYSMSG("\r\n\nusb image download is done!\r\n\n");
+ 
+-	SYSMSG("USB Load Address = 0x%08X Launch Address = 0x%08X, size = %d bytes\r\n",
++	SYSMSG("[915] USB Load Address = 0x%08X Launch Address = 0x%08X, size = %d bytes\r\n",
+ 		pTBI->LOADADDR, pTBI->LAUNCHADDR, pTBI->LOADSIZE);
+ 
+ 
+diff --git a/src/build_info.c b/src/build_info.c
+index 9df7368..c175ef5 100644
+--- a/src/build_info.c
++++ b/src/build_info.c
+@@ -35,6 +35,7 @@ int build_information(void)
+ 	SYSMSG("----------------------------------------------------------------\r\n");
+ 	SYSMSG("BL1 by Nexell Co. : (Ver%d.%d.%d - Built on %s %s) \r\n",
+ 	       ((value >> 12) & 0xF), ((value >> 8) & 0xF), (value & 0xFF), __DATE__, __TIME__);
++	SYSMSG(" Rookie .. Pettra co, Ltd. \r\n");
+ 	SYSMSG("----------------------------------------------------------------\r\n");
+ 
+ 	return 0;
+diff --git a/src/devices/memory/ddr3/ddr3_sdram.c b/src/devices/memory/ddr3/ddr3_sdram.c
+index 576d9c7..8f9c30d 100644
+--- a/src/devices/memory/ddr3/ddr3_sdram.c
++++ b/src/devices/memory/ddr3/ddr3_sdram.c
+@@ -98,7 +98,7 @@ static void get_dram_information(struct dram_device_info *me)
+ 	me->sdram_size	= (CONFIG_DDR3_MEMSIZE/1024/1024);
+ #endif
+ 
+-#if 0
++#if 1
+ 	MEMMSG("############## [SDRAM] Memory Specification ###############\r\n");
+ 	MEMMSG("[Bit] Bank Address   : %d \r\n", me->bank_num);
+ 	MEMMSG("[Bit] Column Address : %d \r\n", me->column_num);
+diff --git a/src/devices/pmic/nxe2000.h b/src/devices/pmic/nxe2000.h
+index 7886d55..02d1437 100644
+--- a/src/devices/pmic/nxe2000.h
++++ b/src/devices/pmic/nxe2000.h
+@@ -38,7 +38,24 @@
+ #define NXE2000_REG_DC4VOL		0x39
+ #define NXE2000_REG_DC5VOL		0x3A
+ 
+-#define NXE2000_REG_LDO7VOL		0x52
++#define NXE2000_REG_LDO1VOL     0x4C
++#define NXE2000_REG_LDO2VOL     0x4D
++#define NXE2000_REG_LDO3VOL     0x4E
++#define NXE2000_REG_LDO4VOL     0x4F
++#define NXE2000_REG_LDO5VOL     0x50
++#define NXE2000_REG_LDO6VOL     0x51
++#define NXE2000_REG_LDO7VOL     0x52
++#define NXE2000_REG_LDO8VOL     0x53
++#define NXE2000_REG_LDO9VOL     0x54
++#define NXE2000_REG_LDO10VOL    0x55
++
++#define NXE2000_REG_LDO_EN1     0x44    //  [ 7:0 ]: LDO 8 to 1
++#define NXE2000_REG_LDO_EN2     0x45    //  [ 5:4 ]: RTC 2, 1 [ 1:0 ]: LDO 10, 9
++
++#define NXE2000_REG_INTEN       0x9D
++
++#define NXE2000_REG_DC1_SLOT    0x16
++
+ 
+ #define I2C_ADDR_NXE2000		(0x64 >> 1)	// SVT & ASB
+ 
+diff --git a/src/main.c b/src/main.c
+index dfbc216..be3ea96 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -43,6 +43,7 @@ static void s5p6818_set_device_env(void)
+ {
+ 	/* (device port number) for u-boot  */
+ 	mmio_write_32(&pReg_ClkPwr->SCRATCH[1], (pSBI->DBI.SDMMCBI.PortNumber));
++	printf("(device port number) for u-boot\r\n");
+ }
+ #endif
+ 
+@@ -60,13 +61,14 @@ void main(unsigned int cpu_id)
+ 	/* step xx. remove the warining message */
+ 	cpu_id = cpu_id;
+ 
+-#if 0	/* (early) low level - log message */
++#if 1	/* (early) low level - log message */
+ 	/* step xx. serial console(uartX) initialize. */
+ 	serial_init(serial_ch);
+ #endif
+ 
+ 	/* step xx. alive pad - hold off  */
+ 	mmio_write_32(&pReg_Alive->ALIVEPWRGATEREG, 1);
++
+ #if (SUPPORT_KERNEL_3_4 == 0)
+ 	mmio_write_32(&pReg_Alive->VDDCTRLSETREG, 0x000003FC);			//; Retention off (Pad hold off)
+ #endif
+@@ -88,6 +90,7 @@ void main(unsigned int cpu_id)
+ #ifdef QUICKBOOT
+ 	printf("BL1\r\n");
+ #endif
++	printf("BL1 roy for s5p6818\r\n");
+ 
+ 	/* step xx. display the ema(extra margin adjustments) information. */
+ 	ema_information();
+@@ -145,6 +148,7 @@ void main(unsigned int cpu_id)
+ 		ERROR("2nd boot header is invalid, please check it out!\r\n");
+ 
+ 	/* step xx. check the memory test (optional) */
++	//simple_memtest();
+ #if defined(STANDARD_MEMTEST)
+ 	standard_memtester();
+ #elif defined(SIMPLE_MEMTEST)
+@@ -199,13 +203,13 @@ void main(unsigned int cpu_id)
+ #endif
+ 	/* step 11. jump the next bootloader (thirdboot) */
+ 	if (ret) {
+-	#if (SUPPORT_KERNEL_3_4 == 1)
++#if (SUPPORT_KERNEL_3_4 == 1)
+ 		void (*pLaunch)(unsigned int, unsigned int)
+ 			= (void(*)(unsigned int, unsigned int))((PTR)pTBI->LAUNCHADDR);
+-	#else
++#else
+ 		struct nx_tbbinfo *tbi = (struct nx_tbbinfo *)&TBI;
+ 		void (*pLaunch)() = (void (*)(void))((PTR)(tbi->startaddr));
+-	#endif
++#endif
+ 		SYSMSG(" Image Loading Done!\r\n");
+ 		SYSMSG("Launch to 0x%08X\r\n", (PTR)pLaunch);
+ 		temp = 0x10000000;
+diff --git a/src/sub_cpu.c b/src/sub_cpu.c
+index f0023da..d1b1ad5 100644
+--- a/src/sub_cpu.c
++++ b/src/sub_cpu.c
+@@ -140,6 +140,7 @@ int s5p6818_subcpu_bringup(unsigned int cpu_id)
+ 	NOTICE("Wakeup Sub CPU ");
+ 
+ #if (MULTICORE_BRING_UP == 1)
++	-
+ 	register struct nx_subcpu_bringup_info *info =
+ 	    (struct nx_subcpu_bringup_info *)CPU_ALIVE_FLAG_ADDR;
+ 	int cpu_num, retry = 0;
+diff --git a/src/sysheader.h b/src/sysheader.h
+index d687e4c..b8597aa 100644
+--- a/src/sysheader.h
++++ b/src/sysheader.h
+@@ -57,7 +57,9 @@
+ #include <memory.h>
+ #include <libstd.h>
+ 
+-#if defined(AVN)
++#if defined(ROOKIE)
++#include <s5p6818_rookie.h>
++#elif defined(AVN)
+ #include <s5p6818_avn_ref.h>
+ #elif defined(DRONE)
+ #include <s5p6818_drone.h>
+@@ -69,6 +71,8 @@
+ #include <s5p6818_kick_st.h>
+ #endif
+ 
++#define SYSLOG_ON
++
+ #if defined(SYSLOG_ON)
+ #define SYSMSG		printf
+ #else
+@@ -91,7 +95,7 @@
+ #define DEVMSG_ON	0
+ 
+ /* Set Log Message(Debug) Macro */
+-#define LOG_LEVEL			30
++#define LOG_LEVEL			50
+ 
+ #define LOG_LEVEL_NONE			0
+ #define LOG_LEVEL_ERROR			10

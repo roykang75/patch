@@ -1,0 +1,369 @@
+diff --git a/arch/arm/cpu/armv8/s5p6818/cpu.c b/arch/arm/cpu/armv8/s5p6818/cpu.c
+index 13905ee..69883d0 100644
+--- a/arch/arm/cpu/armv8/s5p6818/cpu.c
++++ b/arch/arm/cpu/armv8/s5p6818/cpu.c
+@@ -16,6 +16,9 @@
+ 
+ DECLARE_GLOBAL_DATA_PTR;
+ 
++#define CONFIG_DISPLAY_CPUINFO
++#define CONFIG_S5P6818_WATCHDOG
++
+ #ifndef	CONFIG_ARCH_CPU_INIT
+ #error must be define the macro "CONFIG_ARCH_CPU_INIT"
+ #endif
+diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+index 3b0b7b3..f2409ba 100644
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -14,6 +14,7 @@ dtb-$(CONFIG_EXYNOS4) += exynos4210-origen.dtb \
+ dtb-$(CONFIG_ARCH_S5P4418) += s5p4418-drone.dtb \
+ 	s5p4418-artik530-raptor.dtb \
+ 	s5p4418-avn-ref.dtb \
++	s5p4418-rookie.dtb \
+ 	s5p4418-navi-ref.dtb\
+ 	s5p4418-daudio-ref.dtb\
+ 	s5p4418-smart-voice.dtb\
+@@ -32,11 +33,14 @@ dtb-$(CONFIG_ARCH_S5P4418) += s5p4418-drone.dtb \
+ 	s5p4418-artik533-raptor.dtb \
+ 	s5p4418-artik305-raptor.dtb
+ 
+-dtb-$(CONFIG_ARCH_S5P6818) += s5p6818-drone.dtb \
+-	s5p6818-artik710-raptor.dtb \
+-	s5p6818-avn-ref.dtb \
+-	s5p6818-kick-st.dtb \
+-	s5p6818-artik711s-raptor.dtb
++#dtb-$(CONFIG_ARCH_S5P6818) += s5p6818-drone.dtb \
++#	s5p6818-artik710-raptor.dtb \
++#	s5p6818-avn-ref.dtb \
++#	s5p6818-rookie.dtb \
++#	s5p6818-kick-st.dtb \
++#	s5p6818-artik711s-raptor.dtb
++
++dtb-$(CONFIG_ARCH_S5P6818) += s5p6818-rookie.dtb
+ 
+ dtb-$(CONFIG_ARCH_NXP5540) += nxp5540-evb.dtb
+ 
+diff --git a/arch/arm/dts/s5p6818-pinctrl.dtsi b/arch/arm/dts/s5p6818-pinctrl.dtsi
+index 1fa45f0..51b3184 100644
+--- a/arch/arm/dts/s5p6818-pinctrl.dtsi
++++ b/arch/arm/dts/s5p6818-pinctrl.dtsi
+@@ -64,28 +64,28 @@
+ 		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+ 		nexell,pin-strength = <NX_PIN_STR2>;
+ 	};
+-
+ 	/* MMC0 */
+ 	sdmmc0_cclk: sdmmc0-cclk {
+ 		nexell,pins = "gpioa-29";
+ 		nexell,pin-function = <NX_PIN_FUNC1>;
+ 		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+-		nexell,pin-strength = <NX_PIN_STR2>;
++		nexell,pin-strength = <NX_PIN_STR3>;
+ 	};
+ 
+ 	sdmmc0_cmd: sdmmc0-cmd {
+ 		nexell,pins = "gpioa-31";
+ 		nexell,pin-function = <NX_PIN_FUNC1>;
+ 		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+-		nexell,pin-strength = <NX_PIN_STR1>;
++		nexell,pin-strength = <NX_PIN_STR3>;
+ 	};
+ 
+ 	sdmmc0_bus4: sdmmc0-bus-width4 {
+ 		nexell,pins = "gpiob-1", "gpiob-3", "gpiob-5", "gpiob-7";
+ 		nexell,pin-function = <NX_PIN_FUNC1>;
+-		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+-		nexell,pin-strength = <NX_PIN_STR1>;
++		nexell,pin-pull = <NX_PIN_PULL_UP>;
++		nexell,pin-strength = <NX_PIN_STR3>;
+ 	};
++
+ 	/* MMC1 */
+ 	sdmmc1_cclk: sdmmc1-cclk {
+ 		nexell,pins = "gpiod-22";
+@@ -107,7 +107,6 @@
+ 		nexell,pin-pull = <NX_PIN_PULL_NONE>;
+ 		nexell,pin-strength = <NX_PIN_STR1>;
+ 	};
+-
+ 	/* MMC2 */
+ 	sdmmc2_cclk: sdmmc2-cclk {
+ 		nexell,pins = "gpioc-18";
+diff --git a/arch/arm/dts/s5p6818.dtsi b/arch/arm/dts/s5p6818.dtsi
+index 21b83f5..8845b74 100644
+--- a/arch/arm/dts/s5p6818.dtsi
++++ b/arch/arm/dts/s5p6818.dtsi
+@@ -9,33 +9,6 @@
+ / {
+ 	aliases {
+ 		mmc0 = "/mmc0:mmc@c0062000";
+-		mmc1 = "/mmc1@c0068000";
+-		mmc2 = "/mmc2@c0069000";
+-		gmac = "/ethernet@c0060000";
+-	};
+-
+-	mmc2:mmc@c0069000 {
+-		#address-cells = <1>;
+-		#size-cells = <0>;
+-		compatible = "nexell,nexell-dwmmc";
+-		reg = <0xc0069000 0x1000>;
+-		nexell,bus-width = <8>;
+-		index = <2>;
+-		pinctrl-names = "default";
+-		pinctrl-0 = <&sdmmc2_cclk &sdmmc2_cmd &sdmmc2_bus4>;
+-		status = "disabled";
+-	};
+-
+-	mmc1:mmc@c0068000 {
+-		#address-cells = <1>;
+-		#size-cells = <0>;
+-		compatible = "nexell,nexell-dwmmc";
+-		reg = <0xc0068000 0x1000>;
+-		nexell,bus-width = <4>;
+-		index = <1>;
+-		pinctrl-names = "default";
+-		pinctrl-0 = <&sdmmc1_cclk &sdmmc1_cmd &sdmmc1_bus4>;
+-		status = "disabled";
+ 	};
+ 
+ 	mmc0:mmc@c0062000 {
+@@ -47,17 +20,7 @@
+ 		index = <0>;
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&sdmmc0_cclk &sdmmc0_cmd &sdmmc0_bus4>;
+-		status = "disabled";
+-	};
+-
+-	gmac:ethernet@c0060000 {
+-		compatible = "nexell,nexell-gmac";
+-		reg = <0xc0060000 0x8000>;
+-		phy-mode = "rgmii";
+-		pinctrl-names = "default";
+-		pinctrl-0 = <&gmac_txd>, <&gmac_rxd>, <&gmac_txen>,
+-			<&gmac_mdc>, <&gmac_mdio>, <&gmac_rxclk>, <&gmac_txclk>;
+-		status = "disabled";
++		status = "enabled";
+ 	};
+ 
+ 	i2c0:i2c@c00a4000 {
+@@ -84,24 +47,6 @@
+ 		status = "disabled";
+ 	};
+ 
+-	dp0:dp@c0102800 {
+-		#address-cells = <1>;
+-		#size-cells = <0>;
+-		compatible = "nexell,nexell-display";
+-		reg = <0xc0102800 0x100>;
+-		index = <0>;
+-		status = "disabled";
+-	};
+-
+-	dp1:dp@c0102c00 {
+-		#address-cells = <1>;
+-		#size-cells = <0>;
+-		compatible = "nexell,nexell-display";
+-		reg = <0xc0102c00 0x100>;
+-		index = <1>;
+-		status = "disabled";
+-	};
+-
+ 	ehci:usbhost@c0030000 {
+ 		compatible = "nexell,nexell-ehci";
+ 		reg = <0xC0030000 0x10000>;
+diff --git a/arch/arm/mach-nexell/Kconfig b/arch/arm/mach-nexell/Kconfig
+index f1a8df4..50b1f7f 100644
+--- a/arch/arm/mach-nexell/Kconfig
++++ b/arch/arm/mach-nexell/Kconfig
+@@ -11,9 +11,9 @@ config NEXELL_ARMV7_COMMON
+ 
+ config NEXELL_ARMV8_COMMON
+ 	bool "Nexell 64-bit common options"
+-	select ARM64
++    select ARM64
+ 	select ARMV8_MULTIENTRY
+-	select NEXELL_COMMON
++    select NEXELL_COMMON
+ 
+ choice
+ 	prompt "Nexell SoC select"
+diff --git a/arch/arm/mach-nexell/timer.c b/arch/arm/mach-nexell/timer.c
+index 3723d3a..79189c8 100644
+--- a/arch/arm/mach-nexell/timer.c
++++ b/arch/arm/mach-nexell/timer.c
+@@ -201,7 +201,8 @@ unsigned long get_timer_masked(void)
+ 	/* save last */
+ 	gd->arch.tbl = now;
+ 
+-	debug("now=%lu, last=%lu, timestamp=%lu\n", now, gd->arch.tbl, gd->arch.tbu);
++	/* roykang */
++	//debug("now=%lu, last=%lu, timestamp=%lu\n", now, gd->arch.tbl, gd->arch.tbu);
+ 	return (unsigned long)gd->arch.tbu;
+ }
+ 
+diff --git a/board/nexell/s5p4418/Kconfig b/board/nexell/s5p4418/Kconfig
+index 1d9d620..6b7e1af 100644
+--- a/board/nexell/s5p4418/Kconfig
++++ b/board/nexell/s5p4418/Kconfig
+@@ -16,6 +16,11 @@ config TARGET_S5P4418_AVN_REF
+ 	help
+ 	  Support for s5p4418 avn_ref platform.
+ 
++config TARGET_S5P4418_ROOKIE
++	bool "S5P4418_ROOKIE"
++	help
++	  Support for s5p4418 rookie platform.
++
+ config TARGET_S5P4418_NAVI_REF
+ 	bool "S5P4418_NAVI_REF"
+ 	help
+diff --git a/board/nexell/s5p4418/Makefile b/board/nexell/s5p4418/Makefile
+index 3ed04a2..6db0be9 100644
+--- a/board/nexell/s5p4418/Makefile
++++ b/board/nexell/s5p4418/Makefile
+@@ -9,6 +9,7 @@ obj-$(CONFIG_TARGET_S5P4418_DRONE)	+= drone/
+ obj-$(CONFIG_TARGET_ARTIK305_RAPTOR)	+= artik305_raptor/
+ obj-$(CONFIG_TARGET_ARTIK530_RAPTOR)	+= artik530_raptor/
+ obj-$(CONFIG_TARGET_S5P4418_AVN_REF)	+= avn_ref/
++obj-$(CONFIG_TARGET_S5P4418_ROOKIE)	+= rookie/
+ obj-$(CONFIG_TARGET_S5P4418_NAVI_REF)	+= navi_ref/
+ obj-$(CONFIG_TARGET_S5P4418_DAUDIO_REF)	+= daudio_ref/
+ obj-$(CONFIG_TARGET_S5P4418_SMART_VOICE)	+= smart_voice/
+diff --git a/board/nexell/s5p6818/Kconfig b/board/nexell/s5p6818/Kconfig
+index de8969d..125e223 100644
+--- a/board/nexell/s5p6818/Kconfig
++++ b/board/nexell/s5p6818/Kconfig
+@@ -16,6 +16,11 @@ config TARGET_AVN_REF
+ 	help
+ 	  Support for S5P6818 avn ref platform.
+ 
++config TARGET_ROOKIE
++	bool "ROOKIE"
++	help
++	  Support for S5P6818 rookie platform.
++
+ config TARGET_KICK_ST
+ 	bool "KICK_ST"
+ 	help
+diff --git a/board/nexell/s5p6818/Makefile b/board/nexell/s5p6818/Makefile
+index 60c9a75..e92539c 100644
+--- a/board/nexell/s5p6818/Makefile
++++ b/board/nexell/s5p6818/Makefile
+@@ -8,5 +8,6 @@
+ obj-$(CONFIG_TARGET_S5P6818_DRONE)	+= drone/
+ obj-$(CONFIG_TARGET_ARTIK710_RAPTOR)	+= artik710_raptor/
+ obj-$(CONFIG_TARGET_AVN_REF)	+= avn_ref/
++obj-$(CONFIG_TARGET_ROOKIE)	+= rookie/
+ obj-$(CONFIG_TARGET_KICK_ST)	+= kick_st/
+ obj-$(CONFIG_TARGET_ARTIK711S_RAPTOR)	+= artik711s_raptor/
+diff --git a/common/cmd_fastboot.c b/common/cmd_fastboot.c
+index 488822a..2553a7a 100644
+--- a/common/cmd_fastboot.c
++++ b/common/cmd_fastboot.c
+@@ -19,6 +19,8 @@ static int do_fastboot(cmd_tbl_t *cmdtp, int flag, int argc, char *const argv[])
+ 	char *usb_controller;
+ 	int ret;
+ 
++	printf("[roy] do_fastboot\n");
++
+ 	if (argc < 2)
+ 		return CMD_RET_USAGE;
+ 
+diff --git a/drivers/mmc/mmc.c b/drivers/mmc/mmc.c
+index 6566241..6b64f50 100644
+--- a/drivers/mmc/mmc.c
++++ b/drivers/mmc/mmc.c
+@@ -33,6 +33,9 @@
+ #undef QUICKBOOT
+ #endif
+ 
++// roykang
++#define CONFIG_MMC_TRACE
++
+ static struct list_head mmc_devices;
+ static int cur_dev_num = -1;
+ 
+@@ -1610,12 +1613,15 @@ int mmc_start_init(struct mmc *mmc)
+ {
+ 	int err;
+ 
++	printf("[roy] mmc_start_init\n");
++
+ 	/* we pretend there's no card when init is NULL */
+ 	if (mmc_getcd(mmc) == 0 || mmc->cfg->ops->init == NULL) {
+ 		mmc->has_init = 0;
+ #if !defined(CONFIG_SPL_BUILD) || defined(CONFIG_SPL_LIBCOMMON_SUPPORT)
+ 		printf("MMC: no card present\n");
+ #endif
++		printf("[roy] MMC: no card present\n");
+ 		return NO_CARD_ERR;
+ 	}
+ 
+diff --git a/drivers/mmc/nexell_dw_mmc.c b/drivers/mmc/nexell_dw_mmc.c
+index de4c0ca..84a2926 100644
+--- a/drivers/mmc/nexell_dw_mmc.c
++++ b/drivers/mmc/nexell_dw_mmc.c
+@@ -105,6 +105,9 @@ static void nx_dw_mmc_set_pin(struct dwmci_host *host)
+ {
+ 	switch (host->dev_index) {
+ 	case 0:
++		printf("[roy] nx_dw_mmc_set_pin\n");
++
++
+ 		nx_gpio_set_pad_function(0, 29, 1);
+ 		nx_gpio_set_pad_function(0, 31, 1);
+ 		nx_gpio_set_pad_function(1, 1, 1);
+@@ -114,10 +117,25 @@ static void nx_dw_mmc_set_pin(struct dwmci_host *host)
+ 
+ 		nx_gpio_set_drive_strength(0, 29, 2);
+ 		nx_gpio_set_drive_strength(0, 31, 1);
++		//nx_gpio_set_drive_strength(0, 31, 3);
++
+ 		nx_gpio_set_drive_strength(1, 1, 1);
+ 		nx_gpio_set_drive_strength(1, 3, 1);
+ 		nx_gpio_set_drive_strength(1, 5, 1);
+ 		nx_gpio_set_drive_strength(1, 7, 1);
++		//nx_gpio_set_drive_strength(1, 1, 3);
++		//nx_gpio_set_drive_strength(1, 3, 3);
++		//nx_gpio_set_drive_strength(1, 5, 3);
++		//nx_gpio_set_drive_strength(1, 7, 3);
++
++		//set_pin_stat(0, 29, 2);
++		//set_pin_stat(0, 31, 2);
++
++		//set_pin_stat(1, 1, 1);
++		//set_pin_stat(1, 3, 1);
++		//set_pin_stat(1, 5, 1);
++		//set_pin_stat(1, 7, 2);
++
+ 		break;
+ 	case 1:
+ 		set_pin_stat(3, 22, 1);
+diff --git a/include/common.h b/include/common.h
+index 35911ba..2e6388f 100644
+--- a/include/common.h
++++ b/include/common.h
+@@ -94,6 +94,9 @@ typedef volatile unsigned char	vu_char;
+ #define CONFIG_SYS_SUPPORT_64BIT_DATA
+ #endif
+ 
++// roykang
++#define DEBUG
++
+ #ifdef DEBUG
+ #define _DEBUG	1
+ #else
+diff --git a/include/watchdog.h b/include/watchdog.h
+index 4f5e0b6..dc0b669 100644
+--- a/include/watchdog.h
++++ b/include/watchdog.h
+@@ -11,6 +11,8 @@
+ #ifndef _WATCHDOG_H_
+ #define _WATCHDOG_H_
+ 
++#define CONFIG_S5P6818_WATCHDOG
++
+ #if !defined(__ASSEMBLY__)
+ /*
+  * Reset the watchdog timer, always returns 0

@@ -1,0 +1,6 @@
+AVN BOARD
+M:  Sungtae Kang <roykang@dogtra.com>
+S:  Maintained
+F:  board/nexell/s5p6818/rookie/
+F:  include/configs/s5p6818_rookie.h
+F:  configs/s5p6818_rookie_defconfig
