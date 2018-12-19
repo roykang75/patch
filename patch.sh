@@ -13,6 +13,12 @@ tar -xvzf ./rookie.tar.gz
 rm ./rookie.tar.gz
 cd ${srcDir}
 
+echo "apply patch to bl1-s5p4418"
+cp -R ./bl1-s5p4418/* ${targetDir}/device/nexell/bl1/bl1-s5p4418/
+cd ${targetDir}/device/nexell/bl1/bl1-s5p4418/
+patch -p1 < ./bl1-s5p4418.patch
+rm ./bl1-s5p4418.patch
+cd ${srcDir}
 
 echo "apply patch to bl1-s5p6818"
 cp -R ./bl1-s5p6818/* ${targetDir}/device/nexell/bl1/bl1-s5p6818/

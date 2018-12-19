@@ -1,3 +1,7 @@
+echo "bl1-s5p4418 recovery"
+rm -rf device/nexell/bl1/bl1-s5p4418
+repo sync -l device/nexell/bl1/bl1-s5p4418
+
 echo "bl1-s5p6818 recovery"
 rm -rf device/nexell/bl1/bl1-s5p6818
 repo sync -l device/nexell/bl1/bl1-s5p6818
