@@ -1,0 +1,210 @@
+diff --git a/config.mak b/config.mak
+index 453d385..c133c2d 100644
+--- a/config.mak
++++ b/config.mak
+@@ -28,6 +28,8 @@ DEBUG				?= n
+ #CHIPNAME			?= nxp4330
+ CHIPNAME			?= s5p4418
+ 
++OPMODE              ?= aarch32
++
+ # (ddr3/lpddr3) memory type
+ MEMTYPE				?= ddr3
+ #MEMTYPE				?= lpddr3
+@@ -40,24 +42,15 @@ PMIC_ON				?= y
+ CRC_CHECK			?= n
+ 
+ # supported (thridboot) boot mode
+-SUPPORT_SDMMC_BOOT		?= y
+-
+-ifeq ($(CHIPNAME), nxp4330)
+-#BOARD				?= lepus
+-BOARD				?= navi
+-#BOARD				?= smart_voice
+-#BOARD				?= zh_dragon
+-#BOARD				?= svm
+-#BOARD                          ?= cluster
+-#BOARD                          ?= convergence_svmc
+-#BOARD                          ?= con_svma
+-else
+-#BOARD				?= svt
++SUPPORT_SDMMC_BOOT	?= y
++SUPPORT_USB_BOOT    ?= y
++
++
+ #BOARD				?= asb
+ #BOARD				?= drone
+-BOARD				?= avn
++#BOARD				?= avn
++BOARD				?= rookie
+ #BOARD				?= raptor
+-endif
+ 
+ # (sd/mmc, spi, nand, etc) device port number
+ DEVICE_PORT			?= 2
+@@ -69,7 +62,7 @@ KERNEL_VER			?= 3
+ #KERNEL_VER			?= 4
+ 
+ # system log Message
+-SYSLOG				?= n
++SYSLOG				?= y
+ 
+ # secure boot
+ SECURE_ON			?= n
+@@ -176,6 +169,8 @@ endif
+ # supported kernel version (3.18-4.3/4.1-4.4)
+ ifeq ($(KERNEL_VER), 3)
+ CFLAGS				+=	-DKERNEL_VER_3_4
++else
++CFLAGS				+=	-DKERNEL_VER_4_4
+ endif
+ 
+ # system log messgae
+diff --git a/src/devices/pmic/nxe2000.h b/src/devices/pmic/nxe2000.h
+index 762e05f..fd83672 100644
+--- a/src/devices/pmic/nxe2000.h
++++ b/src/devices/pmic/nxe2000.h
+@@ -38,14 +38,33 @@
+ #define NXE2000_DEF_LDOx_VOL_MAX	3500000				/* UINT = 1uV, 3.5V */
+ #define NXE2000_DEF_LDOx_VOL_STEP	25000					/* UINT = 1uV, 25mV */
+ 
+-#define NXE2000_REG_LDO7VOL		0x52
++#define NXE2000_REG_LDO1VOL     0x4C
++#define NXE2000_REG_LDO2VOL     0x4D
++#define NXE2000_REG_LDO3VOL     0x4E
++#define NXE2000_REG_LDO4VOL     0x4F
++#define NXE2000_REG_LDO5VOL     0x50
++#define NXE2000_REG_LDO6VOL     0x51
++#define NXE2000_REG_LDO7VOL     0x52
++#define NXE2000_REG_LDO8VOL     0x53
++#define NXE2000_REG_LDO9VOL     0x54
++#define NXE2000_REG_LDO10VOL    0x55
++
++#define NXE2000_REG_LDO_EN1     0x44    //  [ 7:0 ]: LDO 8 to 1
++#define NXE2000_REG_LDO_EN2     0x45    //  [ 5:4 ]: RTC 2, 1 [ 1:0 ]: LDO 10, 9
++
++#define NXE2000_REG_INTEN       0x9D
++
++#define NXE2000_REG_DC1_SLOT    0x16
++
+ 
+ #define I2C_ADDR_NXE2000                (0x64 >> 1)  // SVT & ASB
+ 
+ /* Function Define */
+ unsigned char nxe2000_get_ldo7_step(int want_vol);
+ unsigned char nxe2000_get_dcdc_step(int want_vol);
+- int nxe2000_write(char addr, char *pdata, int size);
+- int nxe2000_read(char addr, char *pdata, int size);
+ 
++int nxe2000_write(char addr, char *pdata, int size);
++int nxe2000_read(char addr, char *pdata, int size);
++
++void pmic_nxe2000(void);
+ #endif	// ifdef __PMIC_NXE2000_H__
+diff --git a/src/devices/serial.c b/src/devices/serial.c
+index 2286d66..2416a64 100644
+--- a/src/devices/serial.c
++++ b/src/devices/serial.c
+@@ -125,22 +125,28 @@ int serial_init(unsigned int channel)
+ 	/* step xx. set the uart config */
+ 	mmio_write_32(&g_uart_reg->LCR_H, 0x0070);				// 8 bit, none parity, stop 1, normal mode
+ 	mmio_write_32(&g_uart_reg->CR,    0x0300);				// rx, tx enable
++        //mmio_write_32(&g_uart_reg->lcon, 0x3);                                  // No Parrity, Word bit: 8bit, Stop bit: 1bit
++        //mmio_write_32(&g_uart_reg->ucon, 0x113340);
++        //mmio_write_32(&g_uart_reg->fcon, 0x441);                                // [6:4] Triger Level : 40byte,  Tx, Rx FIFO Reset
++        //mmio_write_32(&g_uart_reg->mcon, 0x00);
++
+ 
+ 	/* step xx. calculates an integer at the baud rate */
+ 	reg_value = getquotient(getquotient(clk_freq, CONFIG_S5P_SERIAL_DIVID),
+-			((CONFIG_BAUDRATE / 1) * 16));				// ibrd = 8, 115200bps
++			((CONFIG_BAUDRATE / 1) * 16)) - 1;				// ibrd = 8, 115200bps
+ 	mmio_write_32(&g_uart_reg->ibrd, reg_value);
+ 
+ 
+ 	/* step xx. calculates an fractional at the baud rate */
+ 	reg_value = (getquotient(((getremainder(getquotient(clk_freq, CONFIG_S5P_SERIAL_DIVID),
+-		((CONFIG_BAUDRATE / 1) * 16)) + 32) * 64), ((CONFIG_BAUDRATE / 1) * 16)));		// fbrd = 0,
++		((CONFIG_BAUDRATE / 1) * 16)) + 32) * 16), ((CONFIG_BAUDRATE / 1) * 16)));		// fbrd = 0,
+ 	mmio_write_32(&g_uart_reg->fbrd, reg_value);
+ 
+ 	/* step xx. enable the (ext:uart clock)clock in uart block*/
+ 	mmio_write_32(&clkgen_reg->clkenb, ((1 << 3) | (1 << 2)));		// PCLKMODE : always, Clock Gen Enable
+ 
+ 	mmio_write_32(&g_uart_reg->CR, 0x0301);				// rx, tx, uart enable
++	//mmio_write_32(&g_uart_reg->ucon, 0x113345);
+ 
+ 	return 1;
+ }
+diff --git a/src/main.c b/src/main.c
+index 330807e..01dbbd9 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -17,6 +17,8 @@
+  */
+ #define __SET_GLOBAL_VARIABLES
+ 
++#define PMIC_ON
++
+ #include <sysheader.h>
+ #include <main.h>
+ //#include <memtester.h>
+@@ -80,7 +82,7 @@ void __init main(void)
+ 	nxp4330_self_boot();
+ #endif
+ 
+-#if 0	/* (early) low level - log message */
++#if 1 /* (early) low level - log message */
+ 	/* step xx. serial console(uartX) initialize. */
+ 	serial_init(serial_ch);
+ #endif
+@@ -109,6 +111,8 @@ void __init main(void)
+ 	/* step 03. clock(pll) intialize */
+ 	clock_initialize();
+ 
++	delay_ms(5);
++
+ 	/* step 04. serial console(uartX) initialize. */
+ 	serial_init(serial_ch);
+ 
+@@ -134,6 +138,7 @@ void __init main(void)
+ 	/* step 06. memory initialize */
+ 	memory_initialize(is_resume);
+ 
++	printf("\r\nBL1 roy for s5p4418\r\n");
+ #ifdef QUICKBOOT
+ #ifdef PMIC_CANCEL
+ 	printf("\r\nBL1\r\n");
+diff --git a/src/sysheader.h b/src/sysheader.h
+index 111b7af..2d1a76d 100644
+--- a/src/sysheader.h
++++ b/src/sysheader.h
+@@ -93,7 +93,9 @@
+ #endif
+ 
+ #if defined(CHIPID_S5P4418)
+-#if defined(AVN)
++#if defined(ROOKIE)
++#include <s5p4418_rookie.h>
++#elif defined(AVN)
+ #include <s5p4418_avn_ref.h>
+ #elif defined(DRONE)
+ #include <s5p4418_drone.h>
+@@ -108,6 +110,8 @@
+ #endif
+ #endif
+ 
++#define SYSLOG_ON
++
+ #if defined(SYSLOG_ON)
+ #define SYSMSG	printf
+ #else
+@@ -128,7 +132,7 @@
+ #define DBGOUT	empty_printf
+ #endif
+ 
+-#define LOG_LEVEL			30
++#define LOG_LEVEL			50
+ 
+ #define LOG_LEVEL_NONE			0
+ #define LOG_LEVEL_ERROR			10
