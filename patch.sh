@@ -9,6 +9,9 @@ echo ${targetDir}
 echo "uncompress rookie configurations"
 cp ./rookie.tar.gz ${targetDir}/device/nexell/
 cd ${targetDir}/device/nexell/
+# compress
+# tar -cvzf rookie.tar.gz ./rookie
+# uncompress
 tar -xvzf ./rookie.tar.gz
 rm ./rookie.tar.gz
 cd ${srcDir}
